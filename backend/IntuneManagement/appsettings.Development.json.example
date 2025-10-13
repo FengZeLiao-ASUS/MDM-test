@@ -1,0 +1,22 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning",
+      "Microsoft.EntityFrameworkCore": "Information"
+    }
+  },
+  "AllowedHosts": "*",
+  "ConnectionStrings": {
+    "DefaultConnection": "Data Source=intune_management.db"
+  },
+  "AzureAd": {
+    "TenantId": "YOUR_TENANT_ID",
+    "ClientId": "YOUR_CLIENT_ID",
+    "ClientSecret": "YOUR_CLIENT_SECRET"
+  },
+  "IntunePackage": {
+    "WorkingDirectory": "/tmp/intune-packages",
+    "UtilPath": "/opt/IntuneWinAppUtil/IntuneWinAppUtil.exe"
+  }
+}
