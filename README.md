@@ -2,6 +2,41 @@
 
 A complete system for managing Microsoft Intune devices with a React frontend and .NET backend, featuring authentication, device monitoring, policy management, and .intunewin package deployment.
 
+## 📖 Documentation
+
+| Document | Description |
+|----------|-------------|
+| **[🚀 GETTING_STARTED.md](GETTING_STARTED.md)** | **Start here! Quick 10-minute setup guide** |
+| [QUICKSTART.md](QUICKSTART.md) | Detailed step-by-step setup instructions |
+| [API_DOCUMENTATION.md](API_DOCUMENTATION.md) | Complete API reference with examples |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture and design decisions |
+| [INTUNE_WINAPPUTIL.md](INTUNE_WINAPPUTIL.md) | IntuneWinAppUtil integration guide |
+| [IMPROVEMENTS.md](IMPROVEMENTS.md) | Security issues, concepts, and improvements |
+
+## 🎯 Quick Start
+
+```bash
+# 1. Configure Azure AD (get your tenant & client IDs)
+# 2. Update backend/IntuneManagement/appsettings.json
+
+# 3. Start Backend
+cd backend/IntuneManagement
+dotnet run
+
+# 4. Start Frontend (new terminal)
+cd frontend
+npm install && npm run dev
+
+# 5. Create user & login
+curl -X POST http://localhost:5000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","email":"admin@example.com","password":"Admin123!"}'
+
+# 6. Open http://localhost:5173
+```
+
+**For complete setup instructions, see [GETTING_STARTED.md](GETTING_STARTED.md)**
+
 ## Architecture Overview
 
 This project implements a separated frontend and backend architecture:
