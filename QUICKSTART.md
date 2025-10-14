@@ -69,6 +69,8 @@ curl -X POST http://localhost:5136/api/auth/register \
   }'
 ```
 
+**Note**: You can also use `http://localhost:5173/api/auth/register` (frontend URL) because Vite is configured to proxy all `/api` requests to the backend.
+
 ## Step 5: Login
 
 1. Open browser to `http://localhost:5173`
@@ -119,6 +121,13 @@ curl -X POST http://localhost:5136/api/auth/register \
 - Ensure a user has been created via the register endpoint
 - Check password matches requirements
 - Verify backend is running and accessible
+
+### API returns 404 errors
+- Verify the backend is running on `http://localhost:5136`
+- You can access API endpoints through either:
+  - Backend directly: `http://localhost:5136/api/...`
+  - Frontend proxy: `http://localhost:5173/api/...` (proxied to backend)
+- Ensure Vite dev server is running if using the frontend URL
 
 ## Next Steps
 
