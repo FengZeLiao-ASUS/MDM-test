@@ -31,6 +31,7 @@ npm install && npm run dev
 curl -X POST http://localhost:5136/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","email":"admin@example.com","password":"Admin123!"}'
+# Note: You can also use http://localhost:5173/api/... (Vite proxy enabled)
 
 # 6. Open http://localhost:5173
 ```
@@ -42,6 +43,7 @@ curl -X POST http://localhost:5136/api/auth/register \
 This project implements a separated frontend and backend architecture:
 
 - **Frontend**: React with TypeScript, using Vite as the build tool
+  - Vite dev server configured with proxy to forward `/api` requests to backend
 - **Backend**: .NET 8 Web API with Entity Framework Core
 - **Authentication**: Local user authentication + MSAL integration for Microsoft Graph API
 - **Database**: SQLite for user and policy storage
@@ -196,6 +198,8 @@ curl -X POST http://localhost:5136/api/auth/register \
     "password": "password123"
   }'
 ```
+
+**Note**: You can also use `http://localhost:5173/api/auth/register` (frontend URL) because Vite is configured to proxy all `/api` requests to the backend.
 
 ### Logging In
 
