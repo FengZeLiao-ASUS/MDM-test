@@ -5,7 +5,7 @@ This document describes all available API endpoints for the Intune Management Sy
 ## Base URL
 
 ```
-Development: http://localhost:5000/api
+Development: http://localhost:5136/api
 Production: https://your-domain.com/api
 ```
 
@@ -75,7 +75,7 @@ Create a new user account.
 
 **Example:**
 ```bash
-curl -X POST http://localhost:5000/api/auth/register \
+curl -X POST http://localhost:5136/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "username": "john_doe",
@@ -135,7 +135,7 @@ Authenticate a user and receive an access token.
 
 **Example:**
 ```bash
-curl -X POST http://localhost:5000/api/auth/login \
+curl -X POST http://localhost:5136/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "john@example.com",
@@ -198,7 +198,7 @@ Retrieve all managed devices from Microsoft Intune.
 
 **Example:**
 ```bash
-curl -X GET http://localhost:5000/api/devices \
+curl -X GET http://localhost:5136/api/devices \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
@@ -249,7 +249,7 @@ Retrieve all active policies.
 
 **Example:**
 ```bash
-curl -X GET http://localhost:5000/api/policies \
+curl -X GET http://localhost:5136/api/policies \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
@@ -293,7 +293,7 @@ Retrieve a specific policy.
 
 **Example:**
 ```bash
-curl -X GET http://localhost:5000/api/policies/1 \
+curl -X GET http://localhost:5136/api/policies/1 \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
@@ -351,7 +351,7 @@ Create a new policy.
 
 **Example:**
 ```bash
-curl -X POST http://localhost:5000/api/policies \
+curl -X POST http://localhost:5136/api/policies \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -390,7 +390,7 @@ Delete (soft delete) a policy.
 
 **Example:**
 ```bash
-curl -X DELETE http://localhost:5000/api/policies/1 \
+curl -X DELETE http://localhost:5136/api/policies/1 \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
@@ -445,7 +445,7 @@ Deploy a policy to Microsoft Intune.
 
 **Example:**
 ```bash
-curl -X POST http://localhost:5000/api/policies/deploy \
+curl -X POST http://localhost:5136/api/policies/deploy \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -524,21 +524,21 @@ Currently, there are no rate limits implemented. In production, consider:
 
 ```bash
 # Login and save token
-TOKEN=$(curl -s -X POST http://localhost:5000/api/auth/login \
+TOKEN=$(curl -s -X POST http://localhost:5136/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@example.com","password":"Admin123!"}' \
   | grep -o '"accessToken":"[^"]*"' \
   | cut -d'"' -f4)
 
 # Use token for authenticated requests
-curl -X GET http://localhost:5000/api/devices \
+curl -X GET http://localhost:5136/api/devices \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 ### Using Postman
 
 1. Import the collection (if available)
-2. Set environment variable `baseUrl` to `http://localhost:5000/api`
+2. Set environment variable `baseUrl` to `http://localhost:5136/api`
 3. Login and save `accessToken` to environment
 4. Use `{{accessToken}}` in Authorization header
 
@@ -548,7 +548,7 @@ If using Visual Studio or VS Code with REST Client extension:
 
 ```http
 ### Variables
-@baseUrl = http://localhost:5000/api
+@baseUrl = http://localhost:5136/api
 @token = your-token-here
 
 ### Login
@@ -583,7 +583,7 @@ Content-Type: application/json
 
 The API includes Swagger UI for interactive documentation:
 
-**Development:** http://localhost:5000/swagger
+**Development:** http://localhost:5136/swagger
 
 The Swagger UI provides:
 - Interactive API testing

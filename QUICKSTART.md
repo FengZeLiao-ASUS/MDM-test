@@ -37,13 +37,13 @@ dotnet restore
 dotnet run
 ```
 
-The backend will be available at `http://localhost:5000`
+The backend will be available at `http://localhost:5136`
 
 ## Step 3: Configure Frontend
 
 1. Edit `frontend/.env`:
 ```
-VITE_API_BASE_URL=http://localhost:5000/api
+VITE_API_BASE_URL=http://localhost:5136/api
 ```
 
 2. Start the frontend:
@@ -60,7 +60,7 @@ The frontend will be available at `http://localhost:5173`
 Open a new terminal and create a test user:
 
 ```bash
-curl -X POST http://localhost:5000/api/auth/register \
+curl -X POST http://localhost:5136/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "username": "admin",
@@ -100,7 +100,7 @@ curl -X POST http://localhost:5000/api/auth/register \
 ## Troubleshooting
 
 ### Backend won't start
-- Ensure port 5000 is not in use
+- Ensure port 5136 is not in use
 - Check `appsettings.json` for correct format
 - Verify .NET 8 SDK is installed
 
