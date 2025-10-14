@@ -59,7 +59,7 @@ npm run dev
 
 **Terminal 3 - Create Test User:**
 ```bash
-curl -X POST http://localhost:5000/api/auth/register \
+curl -X POST http://localhost:5136/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "username": "admin",
@@ -148,7 +148,7 @@ This creates:
 
 ### "Login failed"
 - Ensure user was created (run register curl command)
-- Check backend is running on port 5000
+- Check backend is running on port 5136
 - Verify email/password are correct
 
 ### "Frontend won't start"
@@ -158,14 +158,14 @@ This creates:
 
 ### "Backend won't start"
 - Check .NET 8 SDK is installed
-- Verify port 5000 is not in use
+- Verify port 5136 is not in use
 - Check `appsettings.json` is valid JSON
 
 ## 🔧 Common Tasks
 
 ### Add a New User via API
 ```bash
-curl -X POST http://localhost:5000/api/auth/register \
+curl -X POST http://localhost:5136/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "username": "newuser",
@@ -177,17 +177,17 @@ curl -X POST http://localhost:5000/api/auth/register \
 ### Test API Endpoints
 ```bash
 # Login
-TOKEN=$(curl -s -X POST http://localhost:5000/api/auth/login \
+TOKEN=$(curl -s -X POST http://localhost:5136/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@example.com","password":"Admin123!"}' \
   | grep -o '"accessToken":"[^"]*"' | cut -d'"' -f4)
 
 # Get Devices
-curl -X GET http://localhost:5000/api/devices \
+curl -X GET http://localhost:5136/api/devices \
   -H "Authorization: Bearer $TOKEN"
 
 # Get Policies
-curl -X GET http://localhost:5000/api/policies \
+curl -X GET http://localhost:5136/api/policies \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -208,12 +208,12 @@ docker-compose up --build
 
 # Access:
 # Frontend: http://localhost:3000
-# Backend: http://localhost:5000
+# Backend: http://localhost:5136
 ```
 
 ## 💡 Tips
 
-1. **Use Swagger UI**: Visit `http://localhost:5000/swagger` to test APIs
+1. **Use Swagger UI**: Visit `http://localhost:5136/swagger` to test APIs
 2. **Check Backend Logs**: Backend terminal shows all API calls and errors
 3. **Browser DevTools**: Open Console (F12) to see frontend logs
 4. **Sample Policies**: Use seed-data script for ready-made examples
@@ -241,7 +241,7 @@ docker-compose up --build
 - [ ] Azure AD app registration created
 - [ ] Admin consent granted for API permissions
 - [ ] Backend `appsettings.json` updated with Azure AD values
-- [ ] Backend running on port 5000
+- [ ] Backend running on port 5136
 - [ ] Frontend running on port 5173
 - [ ] Test user created
 - [ ] Successfully logged in

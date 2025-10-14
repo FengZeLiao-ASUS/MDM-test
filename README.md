@@ -28,7 +28,7 @@ cd frontend
 npm install && npm run dev
 
 # 5. Create user & login
-curl -X POST http://localhost:5000/api/auth/register \
+curl -X POST http://localhost:5136/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","email":"admin@example.com","password":"Admin123!"}'
 
@@ -140,7 +140,7 @@ This project implements a separated frontend and backend architecture:
    dotnet run
    ```
 
-   The backend API will start on `http://localhost:5000` (HTTP) or `https://localhost:5001` (HTTPS)
+   The backend API will start on `http://localhost:5136` (HTTP) or `https://localhost:7204` (HTTPS)
 
 ### 3. Frontend Setup
 
@@ -156,7 +156,7 @@ This project implements a separated frontend and backend architecture:
 
 3. Update `.env` file with your configuration:
    ```
-   VITE_API_BASE_URL=http://localhost:5000/api
+   VITE_API_BASE_URL=http://localhost:5136/api
    VITE_AZURE_CLIENT_ID=YOUR_CLIENT_ID
    VITE_AZURE_TENANT_ID=YOUR_TENANT_ID
    VITE_REDIRECT_URI=http://localhost:5173
@@ -188,7 +188,7 @@ If IntuneWinAppUtil is not available, the system will still create the necessary
 
 To create a test user via API:
 ```bash
-curl -X POST http://localhost:5000/api/auth/register \
+curl -X POST http://localhost:5136/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "username": "admin",
