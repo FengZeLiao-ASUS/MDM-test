@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMsal } from '@azure/msal-react';
 import { apiService } from '../services/apiService';
+import { loginRequest } from '../config/authConfig';
 import type { Device } from '../types';
 import './Dashboard.css';
 
@@ -9,16 +11,45 @@ export const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { instance, accounts } = useMsal();
 
   useEffect(() => {
-    const user = sessionStorage.getItem('user');
-    if (!user) {
+    // Redirect to login if not authenticated
+    if (accounts.length === 0) {
       navigate('/');
       return;
     }
 
-    loadDevices();
-  }, [navigate]);
+    // Acquire token and load devices
+    acquireTokenAndLoadDevices();
+  }, [accounts, navigate]);
+
+  const acquireTokenAndLoadDevices = async () => {
+    try {
+      const account = accounts[0];
+      const response = await instance.acquireTokenSilent({
+        ...loginRequest,
+        account: account
+      });
+      
+      // Set the access token for API calls
+      apiService.setAccessToken(response.accessToken);
+      
+      await loadDevices();
+    } catch (err: any) {
+      console.error('Token acquisition error:', err);
+      // If silent token acquisition fails, try interactive
+      try {
+        const response = await instance.acquireTokenPopup(loginRequest);
+        apiService.setAccessToken(response.accessToken);
+        await loadDevices();
+      } catch (popupErr: any) {
+        console.error('Interactive token acquisition error:', popupErr);
+        setError('Failed to acquire access token');
+        setLoading(false);
+      }
+    }
+  };
 
   const loadDevices = async () => {
     try {
@@ -36,17 +67,17 @@ export const Dashboard = () => {
 
   const handleLogout = () => {
     sessionStorage.clear();
-    navigate('/');
+    instance.logoutPopup();
   };
 
-  const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+  const account = accounts[0];
 
   return (
     <div className="dashboard">
       <header className="dashboard-header">
         <h1>Intune Device Management</h1>
         <div className="user-info">
-          <span>Welcome, {user.username}</span>
+          <span>Welcome, {account?.name || account?.username}</span>
           <button onClick={handleLogout} className="btn-secondary">Logout</button>
         </div>
       </header>
@@ -63,7 +94,7 @@ export const Dashboard = () => {
       <main className="dashboard-content">
         <div className="content-header">
           <h2>Device Status</h2>
-          <button onClick={loadDevices} className="btn-primary" disabled={loading}>
+          <button onClick={acquireTokenAndLoadDevices} className="btn-primary" disabled={loading}>
             {loading ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMsal } from '@azure/msal-react';
 import { apiService } from '../services/apiService';
+import { loginRequest } from '../config/authConfig';
 import type { Policy, PolicyRequest, DeployPolicyRequest } from '../types';
 import './Policies.css';
 
@@ -13,6 +15,7 @@ export const Policies = () => {
   const [deployLoading, setDeployLoading] = useState(false);
   const [deployMessage, setDeployMessage] = useState('');
   const navigate = useNavigate();
+  const { instance, accounts } = useMsal();
 
   const [newPolicy, setNewPolicy] = useState<PolicyRequest>({
     name: '',
@@ -22,14 +25,42 @@ export const Policies = () => {
   });
 
   useEffect(() => {
-    const user = sessionStorage.getItem('user');
-    if (!user) {
+    // Redirect to login if not authenticated
+    if (accounts.length === 0) {
       navigate('/');
       return;
     }
 
-    loadPolicies();
-  }, [navigate]);
+    // Acquire token and load policies
+    acquireTokenAndLoadPolicies();
+  }, [accounts, navigate]);
+
+  const acquireTokenAndLoadPolicies = async () => {
+    try {
+      const account = accounts[0];
+      const response = await instance.acquireTokenSilent({
+        ...loginRequest,
+        account: account
+      });
+      
+      // Set the access token for API calls
+      apiService.setAccessToken(response.accessToken);
+      
+      await loadPolicies();
+    } catch (err: any) {
+      console.error('Token acquisition error:', err);
+      // If silent token acquisition fails, try interactive
+      try {
+        const response = await instance.acquireTokenPopup(loginRequest);
+        apiService.setAccessToken(response.accessToken);
+        await loadPolicies();
+      } catch (popupErr: any) {
+        console.error('Interactive token acquisition error:', popupErr);
+        setError('Failed to acquire access token');
+        setLoading(false);
+      }
+    }
+  };
 
   const loadPolicies = async () => {
     try {
@@ -106,17 +137,17 @@ export const Policies = () => {
 
   const handleLogout = () => {
     sessionStorage.clear();
-    navigate('/');
+    instance.logoutPopup();
   };
 
-  const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+  const account = accounts[0];
 
   return (
     <div className="dashboard">
       <header className="dashboard-header">
         <h1>Intune Device Management</h1>
         <div className="user-info">
-          <span>Welcome, {user.username}</span>
+          <span>Welcome, {account?.name || account?.username}</span>
           <button onClick={handleLogout} className="btn-secondary">Logout</button>
         </div>
       </header>
