@@ -95,7 +95,7 @@ This project implements a separated frontend and backend architecture:
    - Name: "Intune Management System"
    - Supported account types: "Accounts in this organizational directory only"
    - Redirect URI: 
-     - Type: Single-page application (SPA)
+     - **Platform: Single-page application (SPA)** ⚠️ Important: Select "Single-page application", NOT "Web"
      - URI: `http://localhost:5173`
 4. Note the **Application (client) ID** and **Directory (tenant) ID**
 5. Create a client secret under "Certificates & secrets" (for backend API access)
@@ -323,8 +323,15 @@ For production deployment:
 
 1. **API connection errors**: Verify `VITE_API_BASE_URL` in `.env`
 2. **MSAL authentication errors**: Verify Azure AD configuration in `.env` and ensure redirect URI is registered in Azure portal
-3. **Build errors**: Delete `node_modules` and `package-lock.json`, then run `npm install`
-4. **TypeScript errors**: Run `npm run build` to check for type errors
+3. **CORS/AADSTS9002326 error during login** ("Cross-origin token redemption is permitted only for the 'Single-Page Application' client-type"):
+   - Go to Azure Portal > Azure Active Directory > App registrations > Your App
+   - Navigate to "Authentication" section
+   - Under "Platform configurations", ensure `http://localhost:5173` is listed under **"Single-page applications"** (NOT under "Web")
+   - If it's under "Web", remove it and add it under "Single-page applications" instead
+   - Click "Save"
+   - Clear browser cache and session storage, then try logging in again
+4. **Build errors**: Delete `node_modules` and `package-lock.json`, then run `npm install`
+5. **TypeScript errors**: Run `npm run build` to check for type errors
 
 ## Contributing
 

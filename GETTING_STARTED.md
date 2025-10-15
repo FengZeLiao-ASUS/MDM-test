@@ -27,7 +27,7 @@ dotnet --version
    - Name: `Intune Management System`
    - Supported account types: `Accounts in this organizational directory only`
    - Redirect URI: 
-     - Type: `Single-page application (SPA)`
+     - **Platform: `Single-page application (SPA)`** ⚠️ Important: Must be SPA, NOT Web
      - URI: `http://localhost:5173`
 4. Note your **Application (client) ID** and **Directory (tenant) ID**
 5. Go to **Certificates & secrets** > Create a **New client secret** (for backend)
@@ -153,6 +153,15 @@ This creates:
 - Delete `node_modules` folder
 - Run `npm install` again
 - Check port 5173 is available
+
+### "CORS error when logging in" (AADSTS9002326)
+- This error means the Azure AD app is not properly configured as SPA type
+- Go to Azure Portal > Azure AD > App registrations > Your App > Authentication
+- Check under "Platform configurations" section
+- The redirect URI `http://localhost:5173` must be under **"Single-page applications"**, NOT "Web"
+- If it's listed under "Web", delete it and add it under "Single-page applications"
+- Save changes and try again
+- Clear browser cache/session storage before retrying
 
 ### "Backend won't start"
 - Check .NET 8 SDK is installed
