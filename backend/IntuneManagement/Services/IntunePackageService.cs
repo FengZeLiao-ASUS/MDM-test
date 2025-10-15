@@ -82,7 +82,8 @@ public class IntunePackageService : IIntunePackageService
                 applicationId = await _graphApiService.CreateIntuneApplicationAsync(
                     policy.Name,
                     policy.Description,
-                    fileStream
+                    fileStream,
+                    policy.Configuration
                 );
             }
             catch (Exception ex)
