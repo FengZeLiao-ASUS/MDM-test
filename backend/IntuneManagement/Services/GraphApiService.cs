@@ -94,6 +94,18 @@ public class GraphApiService : IGraphApiService
                 Owner = null,
                 Developer = null,
                 Notes = "Created via API",
+                // Required fields for Win32LobApp
+                InstallCommandLine = "install.bat",
+                UninstallCommandLine = "uninstall.bat",
+                SetupFilePath = "install.bat",
+                FileName = "install.intunewin",
+                ApplicableArchitectures = WindowsArchitecture.X64,
+                MinimumSupportedWindowsRelease = "1607", // Windows 10 version 1607
+                InstallExperience = new Win32LobAppInstallExperience
+                {
+                    RunAsAccount = RunAsAccountType.System,
+                    DeviceRestartBehavior = Win32LobAppRestartBehavior.BasedOnReturnCode
+                }
             };
 
             var result = await _graphClient.DeviceAppManagement.MobileApps.PostAsync(application);
