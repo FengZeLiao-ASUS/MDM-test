@@ -138,6 +138,27 @@ public class GraphApiService : IGraphApiService
                 {
                     RunAsAccount = RunAsAccountType.System,
                     DeviceRestartBehavior = Win32LobAppRestartBehavior.BasedOnReturnCode
+                },
+                // Detection rules - required for Win32LobApp
+                Rules = new List<Win32LobAppRule>
+                {
+                    new Win32LobAppPowerShellScriptRule
+                    {
+                        OdataType = "#microsoft.graph.win32LobAppPowerShellScriptRule",
+                        RuleType = Win32LobAppRuleType.Detection,
+                        DisplayName = "Configuration file detection",
+                        EnforceSignatureCheck = false,
+                        RunAs32Bit = false,
+                        RunAsAccount = RunAsAccountType.System,
+                        ScriptContent = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(@"# Detection script
+$configFile = Join-Path $PSScriptRoot ""configuration.json""
+if (Test-Path $configFile) {
+    Write-Host ""Policy is installed""
+    exit 0
+} else {
+    exit 1
+}"))
+                    }
                 }
             };
 
