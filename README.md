@@ -18,22 +18,17 @@ A complete system for managing Microsoft Intune devices with a React frontend an
 ```bash
 # 1. Configure Azure AD (get your tenant & client IDs)
 # 2. Update backend/IntuneManagement/appsettings.json
+# 3. Update frontend/.env with Azure AD credentials
 
-# 3. Start Backend
+# 4. Start Backend
 cd backend/IntuneManagement
 dotnet run
 
-# 4. Start Frontend (new terminal)
+# 5. Start Frontend (new terminal)
 cd frontend
 npm install && npm run dev
 
-# 5. Create user & login
-curl -X POST http://localhost:5136/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","email":"admin@example.com","password":"Admin123!"}'
-# Note: You can also use http://localhost:5173/api/... (Vite proxy enabled)
-
-# 6. Open http://localhost:5173
+# 6. Open http://localhost:5173 and sign in with Microsoft
 ```
 
 **For complete setup instructions, see [GETTING_STARTED.md](GETTING_STARTED.md)**
@@ -45,16 +40,16 @@ This project implements a separated frontend and backend architecture:
 - **Frontend**: React with TypeScript, using Vite as the build tool
   - Vite dev server configured with proxy to forward `/api` requests to backend
 - **Backend**: .NET 8 Web API with Entity Framework Core
-- **Authentication**: Local user authentication + MSAL integration for Microsoft Graph API
-- **Database**: SQLite for user and policy storage
+- **Authentication**: Microsoft Authentication Library (MSAL) for Azure AD authentication
+- **Database**: SQLite for policy storage
 - **Integration**: Microsoft Graph API for Intune device management
 
 ## Features
 
 ### 1. User Authentication
-- Users can register and login with credentials stored in the local database
-- After successful login, the system provides access to Microsoft Graph API features
-- MSAL (Microsoft Authentication Library) integration for accessing Graph API
+- Users sign in using their Microsoft account via Azure AD
+- MSAL (Microsoft Authentication Library) handles authentication flow
+- Access tokens are automatically acquired for Microsoft Graph API access
 
 ### 2. Device Status Monitoring
 - View all managed devices from Microsoft Intune
@@ -99,11 +94,15 @@ This project implements a separated frontend and backend architecture:
 3. Create a new application registration:
    - Name: "Intune Management System"
    - Supported account types: "Accounts in this organizational directory only"
-   - Redirect URI: Web - `http://localhost:5173`
+   - Redirect URI: 
+     - Type: Single-page application (SPA)
+     - URI: `http://localhost:5173`
 4. Note the **Application (client) ID** and **Directory (tenant) ID**
-5. Create a client secret under "Certificates & secrets"
+5. Create a client secret under "Certificates & secrets" (for backend API access)
 6. Grant the following API permissions under "API permissions":
-   - Microsoft Graph > Application permissions:
+   - Microsoft Graph > Delegated permissions (for frontend MSAL):
+     - `User.Read`
+   - Microsoft Graph > Application permissions (for backend):
      - `DeviceManagementManagedDevices.Read.All`
      - `DeviceAppManagement.ReadWrite.All`
    - Request admin consent for these permissions
@@ -156,7 +155,7 @@ This project implements a separated frontend and backend architecture:
    npm install
    ```
 
-3. Update `.env` file with your configuration:
+3. Create or update `.env` file with your Azure AD configuration:
    ```
    VITE_API_BASE_URL=http://localhost:5136/api
    VITE_AZURE_CLIENT_ID=YOUR_CLIENT_ID
@@ -183,29 +182,12 @@ If IntuneWinAppUtil is not available, the system will still create the necessary
 
 ## Usage
 
-### First Time Setup
-
-1. Open the frontend at `http://localhost:5173`
-2. Since no users exist yet, you'll need to create a test user manually or add a registration endpoint (the backend already has a register endpoint at `/api/auth/register`)
-
-To create a test user via API:
-```bash
-curl -X POST http://localhost:5136/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "admin",
-    "email": "admin@example.com",
-    "password": "password123"
-  }'
-```
-
-**Note**: You can also use `http://localhost:5173/api/auth/register` (frontend URL) because Vite is configured to proxy all `/api` requests to the backend.
-
 ### Logging In
 
-1. Enter your email and password on the login page
-2. Click "Login"
-3. Upon successful authentication, you'll be redirected to the dashboard
+1. Open `http://localhost:5173` in your browser
+2. Click "Sign in with Microsoft"
+3. Authenticate with your Microsoft/Azure AD account
+4. Upon successful authentication, you'll be redirected to the dashboard
 
 ### Viewing Devices
 
@@ -229,10 +211,6 @@ curl -X POST http://localhost:5136/api/auth/register \
 
 ## API Endpoints
 
-### Authentication
-- `POST /api/auth/login` - User login
-- `POST /api/auth/register` - User registration
-
 ### Devices
 - `GET /api/devices` - Get all managed devices from Intune
 
@@ -242,6 +220,8 @@ curl -X POST http://localhost:5136/api/auth/register \
 - `POST /api/policies` - Create a new policy
 - `DELETE /api/policies/{id}` - Delete a policy
 - `POST /api/policies/deploy` - Deploy a policy to Intune
+
+**Note**: All API endpoints require a valid Azure AD access token in the Authorization header.
 
 ## Project Structure
 
@@ -269,17 +249,17 @@ MDM-test/
 
 ### Security Considerations
 
-1. **Password Hashing**: The current implementation uses SHA256 for password hashing. For production, use a proper password hashing library like BCrypt or Argon2.
+1. **Azure AD Authentication**: The system uses MSAL for secure authentication with Azure AD. Tokens are managed automatically with proper expiration handling.
 
-2. **JWT Tokens**: The authentication currently uses a simple token. For production, implement proper JWT tokens with signing and expiration.
+2. **HTTPS**: Always use HTTPS in production environments.
 
-3. **HTTPS**: Always use HTTPS in production environments.
+3. **Secret Management**: Never commit sensitive credentials to source control. Use Azure Key Vault or environment variables.
 
-4. **Secret Management**: Never commit sensitive credentials to source control. Use Azure Key Vault or environment variables.
+4. **Token Security**: Access tokens are stored in sessionStorage and cleared on logout. For enhanced security, consider implementing additional token protection mechanisms.
 
 ### Database
 
-The system uses SQLite for simplicity. For production:
+The system uses SQLite for policy storage. For production:
 - Consider using SQL Server or PostgreSQL
 - Implement proper database migrations
 - Add connection pooling and retry logic
@@ -336,15 +316,15 @@ For production deployment:
 
 ### Backend Issues
 
-1. **Database errors**: Delete `intune_management.db` and restart to recreate the database
-2. **Graph API authentication errors**: Verify Azure AD credentials in `appsettings.json`
-3. **CORS errors**: Ensure the frontend URL is in the CORS policy
+1. **Graph API authentication errors**: Verify Azure AD credentials in `appsettings.json`
+2. **CORS errors**: Ensure the frontend URL is in the CORS policy
 
 ### Frontend Issues
 
 1. **API connection errors**: Verify `VITE_API_BASE_URL` in `.env`
-2. **Build errors**: Delete `node_modules` and `package-lock.json`, then run `npm install`
-3. **TypeScript errors**: Run `npm run build` to check for type errors
+2. **MSAL authentication errors**: Verify Azure AD configuration in `.env` and ensure redirect URI is registered in Azure portal
+3. **Build errors**: Delete `node_modules` and `package-lock.json`, then run `npm install`
+4. **TypeScript errors**: Run `npm run build` to check for type errors
 
 ## Contributing
 

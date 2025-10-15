@@ -11,7 +11,7 @@ export const msalConfig = {
 };
 
 export const loginRequest = {
-  scopes: ['User.Read', 'DeviceManagementManagedDevices.Read.All']
+  scopes: ['User.Read']
 };
 
 export const graphConfig = {

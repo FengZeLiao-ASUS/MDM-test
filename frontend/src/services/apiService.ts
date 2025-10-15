@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { AxiosInstance } from 'axios';
 import { apiConfig } from '../config/apiConfig';
-import type { LoginRequest, LoginResponse, Device, Policy, PolicyRequest, DeployPolicyRequest, DeployPolicyResponse } from '../types';
+import type { Device, Policy, PolicyRequest, DeployPolicyRequest, DeployPolicyResponse } from '../types';
 
 class ApiService {
   private client: AxiosInstance;
@@ -17,7 +17,7 @@ class ApiService {
     // Add request interceptor to include auth token
     this.client.interceptors.request.use(
       (config) => {
-        const token = sessionStorage.getItem('authToken');
+        const token = sessionStorage.getItem('msalAccessToken');
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -29,17 +29,9 @@ class ApiService {
     );
   }
 
-  // Auth endpoints
-  async login(credentials: LoginRequest): Promise<LoginResponse> {
-    const response = await this.client.post<LoginResponse>('/auth/login', credentials);
-    if (response.data.accessToken) {
-      sessionStorage.setItem('authToken', response.data.accessToken);
-    }
-    return response.data;
-  }
-
-  async register(data: { username: string; email: string; password: string }): Promise<void> {
-    await this.client.post('/auth/register', data);
+  // Set the access token for API calls
+  setAccessToken(token: string) {
+    sessionStorage.setItem('msalAccessToken', token);
   }
 
   // Device endpoints

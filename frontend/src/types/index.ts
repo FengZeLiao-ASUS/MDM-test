@@ -1,21 +1,3 @@
-export interface User {
-  id: number;
-  username: string;
-  email: string;
-}
-
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface LoginResponse {
-  success: boolean;
-  message: string;
-  accessToken?: string;
-  user?: User;
-}
-
 export interface Device {
   id: string;
   deviceName: string;

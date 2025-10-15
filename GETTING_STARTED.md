@@ -25,11 +25,16 @@ dotnet --version
 2. Navigate to **Azure Active Directory** > **App registrations**
 3. Click **New registration**:
    - Name: `Intune Management System`
-   - Redirect URI: `http://localhost:5173`
+   - Supported account types: `Accounts in this organizational directory only`
+   - Redirect URI: 
+     - Type: `Single-page application (SPA)`
+     - URI: `http://localhost:5173`
 4. Note your **Application (client) ID** and **Directory (tenant) ID**
-5. Go to **Certificates & secrets** > Create a **New client secret**
+5. Go to **Certificates & secrets** > Create a **New client secret** (for backend)
 6. Go to **API permissions** > Add these permissions:
-   - `Microsoft Graph` > `Application permissions`:
+   - `Microsoft Graph` > `Delegated permissions` (for frontend MSAL):
+     - `User.Read`
+   - `Microsoft Graph` > `Application permissions` (for backend):
      - `DeviceManagementManagedDevices.Read.All`
      - `DeviceAppManagement.ReadWrite.All`
    - Click **Grant admin consent**
@@ -53,28 +58,21 @@ dotnet run
 ```bash
 cd frontend
 
+# Create .env file with your Azure AD values:
+# VITE_API_BASE_URL=http://localhost:5136/api
+# VITE_AZURE_CLIENT_ID=your-client-id
+# VITE_AZURE_TENANT_ID=your-tenant-id
+# VITE_REDIRECT_URI=http://localhost:5173
+
 npm install
 npm run dev
-```
-
-**Terminal 3 - Create Test User:**
-```bash
-curl -X POST http://localhost:5136/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "admin",
-    "email": "admin@example.com",
-    "password": "Admin123!"
-  }'
 ```
 
 ## 🎉 You're Ready!
 
 Open your browser: **http://localhost:5173**
 
-Login with:
-- Email: `admin@example.com`
-- Password: `Admin123!`
+Click **Sign in with Microsoft** and authenticate with your Azure AD account.
 
 ## 📋 What You Can Do Now
 

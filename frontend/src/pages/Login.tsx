@@ -1,32 +1,32 @@
-import { useState } from 'react';
-import type { FormEvent } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiService } from '../services/apiService';
+import { useMsal } from '@azure/msal-react';
+import { loginRequest } from '../config/authConfig';
 import './Login.css';
 
 export const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { instance, accounts } = useMsal();
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (accounts.length > 0) {
+      navigate('/dashboard');
+    }
+  }, [accounts, navigate]);
+
+  const handleLogin = async () => {
     setError('');
     setLoading(true);
 
     try {
-      const response = await apiService.login({ email, password });
-      
-      if (response.success && response.user) {
-        sessionStorage.setItem('user', JSON.stringify(response.user));
-        navigate('/dashboard');
-      } else {
-        setError(response.message || 'Login failed');
-      }
+      await instance.loginPopup(loginRequest);
+      navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'An error occurred during login');
+      console.error('Login error:', err);
+      setError(err.message || 'An error occurred during login');
     } finally {
       setLoading(false);
     }
@@ -36,42 +36,21 @@ export const Login = () => {
     <div className="login-container">
       <div className="login-card">
         <h1>Intune Management System</h1>
-        <h2>Login</h2>
+        <h2>Login with Microsoft</h2>
         
         {error && <div className="error-message">{error}</div>}
         
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="Enter your email"
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="Enter your password"
-            />
-          </div>
-          
-          <button type="submit" disabled={loading} className="btn-primary">
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
+        <button 
+          onClick={handleLogin} 
+          disabled={loading} 
+          className="btn-primary"
+          style={{ marginTop: '20px' }}
+        >
+          {loading ? 'Signing in...' : 'Sign in with Microsoft'}
+        </button>
         
         <p className="info-text">
-          Note: After logging in with your local account, you can access Microsoft Graph API features.
+          Note: Sign in with your Microsoft account to access Intune device management features.
         </p>
       </div>
     </div>
