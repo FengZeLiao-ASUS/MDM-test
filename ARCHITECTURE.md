@@ -7,42 +7,41 @@ This document explains the architecture and design decisions of the Intune Manag
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                           User's Web Browser                             │
-│                         (React + TypeScript)                             │
-└────────────────┬────────────────────────────────────────────────────────┘
-                 │
-                 │ HTTP/HTTPS
-                 │ REST API
-                 │
-┌────────────────▼────────────────────────────────────────────────────────┐
-│                        Backend API Server                                │
-│                    (.NET 8 Web API + EF Core)                           │
-│                                                                          │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────┐               │
-│  │   Auth       │  │   Policy     │  │   Device       │               │
-│  │   Service    │  │   Service    │  │   Service      │               │
-│  └──────────────┘  └──────────────┘  └────────────────┘               │
-│                                                                          │
-│  ┌──────────────┐  ┌──────────────────────────────────────┐            │
-│  │   Intune     │  │   Graph API Service                  │            │
-│  │   Package    │  │   (Microsoft Graph Client)           │            │
-│  │   Service    │  └──────────────────────────────────────┘            │
-│  └──────────────┘                                                       │
-└────────────────┬────────────────────────────────┬───────────────────────┘
-                 │                                │
-                 │                                │ HTTPS
-                 │ File System                    │ OAuth 2.0 + Client Secret
-                 │                                │
-         ┌───────▼────────┐              ┌───────▼─────────────────────┐
-         │   SQLite DB    │              │   Microsoft Graph API       │
-         │   (User Data,  │              │   (Azure AD + Intune)       │
-         │    Policies)   │              │                             │
-         └────────────────┘              └─────────────────────────────┘
-                                                      │
-                                                      │
-                                         ┌────────────▼──────────────┐
-                                         │  Microsoft Intune Portal  │
-                                         │  (Device Management)      │
-                                         └───────────────────────────┘
+│                         (React + TypeScript + MSAL)                      │
+└────────────────┬───────────────────────────────────┬────────────────────┘
+                 │                                   │
+                 │ HTTP/HTTPS                        │ HTTPS/OAuth 2.0
+                 │ REST API                          │ (Popup/Redirect)
+                 │                                   │
+┌────────────────▼────────────────────┐   ┌──────────▼──────────────────┐
+│        Backend API Server           │   │      Azure AD               │
+│    (.NET 8 Web API + EF Core)      │   │   (Authentication)          │
+│                                     │   │                             │
+│  ┌──────────────┐  ┌──────────────┐│   └─────────────────────────────┘
+│  │   Policy     │  │   Device     ││
+│  │   Service    │  │   Service    ││
+│  └──────────────┘  └──────────────┘│
+│                                     │
+│  ┌──────────────┐  ┌──────────────┐│
+│  │   Intune     │  │   Graph API  ││
+│  │   Package    │  │   Service    ││
+│  │   Service    │  │   (Client)   ││
+│  └──────────────┘  └──────────────┘│
+└────────────────┬────────────────┬───┘
+                 │                │
+                 │                │ HTTPS
+                 │ File System    │ OAuth 2.0 + Client Secret
+                 │                │
+         ┌───────▼────────┐  ┌───▼─────────────────────┐
+         │   SQLite DB    │  │   Microsoft Graph API   │
+         │   (Policies)   │  │   (Azure AD + Intune)   │
+         └────────────────┘  └─────────────────────────┘
+                                          │
+                                          │
+                             ┌────────────▼──────────────┐
+                             │  Microsoft Intune Portal  │
+                             │  (Device Management)      │
+                             └───────────────────────────┘
 ```
 
 ## Component Architecture
@@ -84,22 +83,18 @@ frontend/
 ```
 backend/IntuneManagement/
 ├── Controllers/               # API endpoints
-│   ├── AuthController.cs     # /api/auth/*
 │   ├── DevicesController.cs  # /api/devices/*
 │   └── PoliciesController.cs # /api/policies/*
 │
 ├── Services/                  # Business logic
-│   ├── AuthService.cs        # User authentication
 │   ├── PolicyService.cs      # Policy CRUD
 │   ├── GraphApiService.cs    # Microsoft Graph integration
 │   └── IntunePackageService.cs # .intunewin creation
 │
 ├── Models/                    # Data models
-│   ├── User.cs
 │   └── Policy.cs
 │
 ├── DTOs/                      # Data transfer objects
-│   ├── AuthDTOs.cs
 │   ├── PolicyDTOs.cs
 │   └── DeviceDTOs.cs
 │
@@ -122,19 +117,19 @@ backend/IntuneManagement/
 
 ```
 ┌──────┐                                                   ┌──────────┐
-│ User │                                                   │ Database │
+│ User │                                                   │ Azure AD │
 └───┬──┘                                                   └────┬─────┘
     │                                                           │
-    │ 1. Enter credentials (email, password)                   │
+    │ 1. Click "Sign in with Microsoft"                        │
     ├──────────────────────────────────────────────────►       │
     │                                                           │
-    │              2. Hash password & query DB                 │
+    │              2. Azure AD authentication popup            │
     │                                          ◄───────────────┤
     │                                                           │
-    │ 3. Return JWT token + user info                          │
+    │ 3. Return access token + ID token                        │
     │ ◄──────────────────────────────────────                 │
     │                                                           │
-    │ 4. Store token in sessionStorage                         │
+    │ 4. Store tokens in sessionStorage (MSAL cache)           │
     │                                                           │
     │ 5. Redirect to dashboard                                 │
     │                                                           │
@@ -149,6 +144,8 @@ backend/IntuneManagement/
     │                  │                     │                      │
     │ 1. Request       │                     │                      │
     │    devices       │                     │                      │
+    │    (with MSAL    │                     │                      │
+    │     token)       │                     │                      │
     ├─────────────────►│                     │                      │
     │                  │                     │                      │
     │                  │ 2. Authenticate     │                      │
@@ -225,13 +222,14 @@ backend/IntuneManagement/
 
 ### Authentication & Authorization
 
-1. **Local Authentication**:
-   - User credentials stored in SQLite
-   - Passwords hashed with SHA256 (upgrade to BCrypt recommended)
-   - Simple token-based auth (upgrade to JWT recommended)
+1. **Frontend Authentication (MSAL)**:
+   - Users authenticate via Azure AD using popup or redirect flow
+   - MSAL library handles token acquisition and caching
+   - Access tokens are automatically refreshed when expired
+   - Tokens are stored in sessionStorage and cleared on logout
 
-2. **Azure AD Integration**:
-   - Service principal with client secret
+2. **Backend Authentication (Azure AD)**:
+   - Service principal with client secret for backend API access
    - Application permissions for Graph API
    - Token management handled by Microsoft.Identity.Web
 
@@ -241,6 +239,8 @@ backend/IntuneManagement/
 Request Flow:
 ┌─────────────────┐
 │   API Request   │
+│  (with Bearer   │
+│   MSAL token)   │
 └────────┬────────┘
          │
          ▼
