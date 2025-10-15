@@ -1,5 +1,6 @@
 using Microsoft.Graph;
-using Microsoft.Graph.Models;
+using Microsoft.Graph.Beta;
+using Microsoft.Graph.Beta.Models;
 using Azure.Identity;
 using DeviceInfo = IntuneManagement.DTOs.DeviceInfo;
 
@@ -13,7 +14,7 @@ public interface IGraphApiService
 
 public class GraphApiService : IGraphApiService
 {
-    private readonly GraphServiceClient _graphClient;
+    private readonly Microsoft.Graph.Beta.GraphServiceClient _graphClient;
     private readonly IConfiguration _configuration;
     private readonly ILogger<GraphApiService> _logger;
 
@@ -34,7 +35,7 @@ public class GraphApiService : IGraphApiService
         var clientSecretCredential = new ClientSecretCredential(
             tenantId, clientId, clientSecret, options);
 
-        _graphClient = new GraphServiceClient(clientSecretCredential);
+        _graphClient = new Microsoft.Graph.Beta.GraphServiceClient(clientSecretCredential);
     }
 
     public async Task<DTOs.DeviceListResponse> GetDevicesAsync()
@@ -116,6 +117,25 @@ public class GraphApiService : IGraphApiService
                 _ => WindowsArchitecture.X64
             };
             
+            // Create detection rule - PowerShell script to detect if configuration.json exists
+            var detectionScript = @"
+# Detection script
+$configFile = Join-Path $PSScriptRoot ""configuration.json""
+if (Test-Path $configFile) {
+    Write-Host ""Policy is installed""
+    exit 0
+} else {
+    exit 1
+}";
+            
+            var detectionRule = new Win32LobAppPowerShellScriptDetection
+            {
+                OdataType = "#microsoft.graph.win32LobAppPowerShellScriptDetection",
+                ScriptContent = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(detectionScript)),
+                EnforceSignatureCheck = false,
+                RunAs32Bit = false
+            };
+            
             var application = new Win32LobApp
             {
                 DisplayName = displayName,
@@ -138,7 +158,9 @@ public class GraphApiService : IGraphApiService
                 {
                     RunAsAccount = RunAsAccountType.System,
                     DeviceRestartBehavior = Win32LobAppRestartBehavior.BasedOnReturnCode
-                }
+                },
+                // Add detection rules - required for Win32LobApp
+                DetectionRules = new List<Win32LobAppDetection> { detectionRule }
             };
 
             var result = await _graphClient.DeviceAppManagement.MobileApps.PostAsync(application);
