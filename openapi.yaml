@@ -1,0 +1,990 @@
+openapi: 3.1.0
+info:
+  title: MDM API
+  version: 1.0.0
+  description: >
+    API-first 規劃（Dashboard、Users、Policies、Groups、Files、Jobs、Policy Types、Firmware）。
+    - 認證：JWT Bearer
+    - 錯誤：RFC7807 problem+json
+    - 時間：RFC3339 UTC
+    - 分頁：預設 page/limit，未來可擴充 cursor
+servers:
+  - url: http://localhost:4010
+    description: Prism Mock server
+  - url: https://api.mdm.example.com
+    description: Production
+security:
+  - bearerAuth: []
+tags:
+  - name: Dashboard
+  - name: Users
+  - name: Policies
+  - name: Groups
+  - name: Files
+  - name: Jobs
+  - name: Policy Types
+  - name: Firmware
+paths:
+  /v1/dashboard:
+    get:
+      tags: [Dashboard]
+      summary: 儀表板摘要（不含 me）
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+              examples:
+                example:
+                  value:
+                    policyCount: 128
+                    policiesByType:
+                      - type: bios_authentication
+                        title: BIOS Authentication
+                        count: 80
+                      - type: bios_update
+                        title: BIOS Update
+                        count: 48
+                    groupCount: 23
+        default:
+          $ref: "#/components/responses/DefaultProblem"
+  /v1/users/me:
+    get:
+      tags: [Users]
+      summary: 目前使用者資訊（Navbar 顯示 email/name）
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+              examples:
+                example:
+                  value: { id: "u_123", email: "user@example.com", name: "Jane Doe" }
+        default:
+          $ref: "#/components/responses/DefaultProblem"
+  /v1/groups:
+    get:
+      tags: [Groups]
+      summary: 群組列表（搜尋/分頁）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Search"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupList"
+              examples:
+                example:
+                  value:
+                    items:
+                      - { id: "g1", name: "Finance", deviceCount: 120 }
+                      - { id: "g2", name: "IT", deviceCount: 250 }
+                    page: 1
+                    limit: 20
+                    total: 2
+        default:
+          $ref: "#/components/responses/DefaultProblem"
+  /v1/policies:
+    get:
+      tags: [Policies]
+      summary: Policy 列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Sort"
+        - $ref: "#/components/parameters/FilterType"
+        - $ref: "#/components/parameters/FilterTag"
+        - $ref: "#/components/parameters/FilterStatus"
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyList"
+              examples:
+                example:
+                  value:
+                    items:
+                      - id: "p1"
+                        name: "BIOS Auth - Finance"
+                        tags: ["security","bios"]
+                        status: "published"
+                        type: "bios_authentication"
+                        updatedAt: "2025-01-01T00:00:00Z"
+                      - id: "p2"
+                        name: "BIOS Update - IT"
+                        tags: ["update","bios"]
+                        status: "publishing"
+                        type: "bios_update"
+                        updatedAt: "2025-01-02T12:00:00Z"
+                    page: 1
+                    limit: 20
+                    total: 2
+        default:
+          $ref: "#/components/responses/DefaultProblem"
+    post:
+      tags: [Policies]
+      summary: 建立 Policy（預設 publish=true）
+      description: 建立後會依設定觸發對 Microsoft Graph 的非同步發布
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePolicyRequest"
+            examples:
+              biosAuthentication:
+                value:
+                  type: "bios_authentication"
+                  name: "BIOS Auth - Finance"
+                  description: "Require BIOS password"
+                  tags: ["security","bios"]
+                  groupIds: ["g1","g2"]
+                  properties:
+                    password: "s3cr3t"
+                    certKeyFileId: "file_123"
+              biosUpdate:
+                value:
+                  type: "bios_update"
+                  name: "BIOS Update - IT"
+                  tags: ["update","bios"]
+                  groupIds: ["g2"]
+                  properties:
+                    password: "s3cr3t"
+                    modelId: "bios_model_123"
+      responses:
+        "201":
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Policy"
+        default:
+          $ref: "#/components/responses/DefaultProblem"
+  /v1/policies/{id}:
+    get:
+      tags: [Policies]
+      summary: 取得單一 Policy（完整）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PolicyId"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Policy"
+              examples:
+                biosAuth:
+                  value:
+                    id: "p1"
+                    type: "bios_authentication"
+                    name: "BIOS Auth - Finance"
+                    description: "Require BIOS password"
+                    tags: ["security","bios"]
+                    groups: [{id: "g1", name: "Finance"}]
+                    status: "published"
+                    properties: { password: "********", certKeyFileId: "file_123" }
+                    external:
+                      provider: "microsoft_graph"
+                      externalId: "ext_abc"
+                      lastPublishedAt: "2025-01-01T00:00:00Z"
+                      lastPublishStatus: "succeeded"
+                    createdAt: "2024-12-31T00:00:00Z"
+                    updatedAt: "2025-01-01T00:00:00Z"
+                    publishedAt: "2025-01-01T00:00:00Z"
+        default:
+          $ref: "#/components/responses/DefaultProblem"
+    patch:
+      tags: [Policies]
+      summary: 更新 Policy（部分欄位；可全量覆蓋 groupIds）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PolicyId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePolicyRequest"
+            examples:
+              example:
+                value:
+                  name: "BIOS Auth - Finance (v2)"
+                  tags: ["security","bios","v2"]
+                  groupIds: ["g1","g3"]
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Policy"
+        default:
+          $ref: "#/components/responses/DefaultProblem"
+    delete:
+      tags: [Policies]
+      summary: 刪除 Policy
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PolicyId"
+      responses:
+        "204":
+          description: 已刪除
+        default:
+          $ref: "#/components/responses/DefaultProblem"
+  /v1/policies/{id}/clone:
+    post:
+      tags: [Policies]
+      summary: 複製 Policy
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PolicyId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClonePolicyRequest"
+            examples:
+              example:
+                value:
+                  name: "BIOS Auth - Finance (Copy)"
+                  tags: ["security","bios","copy"]
+      responses:
+        "201":
+          description: 已複製
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Policy"
+        default:
+          $ref: "#/components/responses/DefaultProblem"
+  /v1/policies/{id}/groups:
+    put:
+      tags: [Policies]
+      summary: 設定 Policy 的群組（全量覆蓋）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PolicyId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [groupIds]
+              properties:
+                groupIds:
+                  type: array
+                  items: { type: string }
+            examples:
+              example:
+                value:
+                  groupIds: ["g1","g2","g3"]
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Policy"
+        default:
+          $ref: "#/components/responses/DefaultProblem"
+  /v1/policies/{id}/groups/{groupId}:
+    post:
+      tags: [Policies]
+      summary: 新增單一群組至 Policy
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PolicyId"
+        - $ref: "#/components/parameters/GroupId"
+      responses:
+        "204":
+          description: 已新增
+        default:
+          $ref: "#/components/responses/DefaultProblem"
+    delete:
+      tags: [Policies]
+      summary: 自 Policy 移除單一群組
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PolicyId"
+        - $ref: "#/components/parameters/GroupId"
+      responses:
+        "204":
+          description: 已移除
+        default:
+          $ref: "#/components/responses/DefaultProblem"
+  /v1/policies/{id}/publish:
+    post:
+      tags: [Policies]
+      summary: 觸發重新發布至 Microsoft Graph（非同步）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PolicyId"
+      responses:
+        "202":
+          description: 已接受
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublishResponse"
+              examples:
+                example:
+                  value:
+                    job:
+                      id: "job_1"
+                      type: "policy.publish"
+                      status: "queued"
+                      startedAt: null
+                      finishedAt: null
+                      error: null
+                    policy:
+                      id: "p1"
+                      type: "bios_authentication"
+                      name: "BIOS Auth - Finance"
+                      tags: ["security","bios"]
+                      groups: [{id:"g1", name:"Finance"}]
+                      status: "publishing"
+                      properties: { password: "********", certKeyFileId: "file_123" }
+                      createdAt: "2024-12-31T00:00:00Z"
+                      updatedAt: "2025-01-01T00:00:00Z"
+        default:
+          $ref: "#/components/responses/DefaultProblem"
+  /v1/files/uploads:
+    post:
+      tags: [Files]
+      summary: 建立預簽上傳（certKey）
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FileUploadInitRequest"
+            examples:
+              example:
+                value:
+                  filename: "cert.key"
+                  contentType: "application/octet-stream"
+                  purpose: "policy_cert_key"
+      responses:
+        "201":
+          description: 已建立上傳
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileUploadInitResponse"
+              examples:
+                example:
+                  value:
+                    fileId: "file_123"
+                    uploadUrl: "https://mock.storage/upload/file_123"
+                    headers:
+                      Content-Type: "application/octet-stream"
+                    expiresAt: "2025-01-01T01:00:00Z"
+        default:
+          $ref: "#/components/responses/DefaultProblem"
+  /v1/jobs/{id}:
+    get:
+      tags: [Jobs]
+      summary: 查詢非同步 Job 狀態（例如 policy.publish）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+              examples:
+                example:
+                  value:
+                    id: "job_1"
+                    type: "policy.publish"
+                    status: "succeeded"
+                    startedAt: "2025-01-01T00:01:00Z"
+                    finishedAt: "2025-01-01T00:02:30Z"
+                    error: null
+        default:
+          $ref: "#/components/responses/DefaultProblem"
+  /v1/policy-types:
+    get:
+      tags: [Policy Types]
+      summary: 可用的 Policy 類型列表
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PolicyType"
+              examples:
+                example:
+                  value:
+                    items:
+                      - { type: "bios_authentication", title: "BIOS Authentication" }
+                      - { type: "bios_update", title: "BIOS Update" }
+        default:
+          $ref: "#/components/responses/DefaultProblem"
+  /v1/policy-types/{type}:
+    get:
+      tags: [Policy Types]
+      summary: 取得指定 Policy 類型的欄位 Schema（JSON Schema）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PolicyType"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyTypeDetail"
+              examples:
+                biosAuth:
+                  value:
+                    type: "bios_authentication"
+                    title: "BIOS Authentication"
+                    schema:
+                      $schema: "https://json-schema.org/draft/2020-12/schema"
+                      type: object
+                      additionalProperties: false
+                      required: ["password","certKeyFileId"]
+                      properties:
+                        password: { type: string, minLength: 1 }
+                        certKeyFileId: { type: string }
+        default:
+          $ref: "#/components/responses/DefaultProblem"
+  /v1/firmware/bios/models:
+    get:
+      tags: [Firmware]
+      summary: BIOS Model 列表（固定來源 allowlist）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Search"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BiosModelList"
+              examples:
+                example:
+                  value:
+                    items:
+                      - id: "bios_model_123"
+                        name: "Pro 14 Gen2"
+                        version: "1.0.3"
+                        vendor: "ASUS"
+                        modelNumber: "X1234"
+                        releasedAt: "2024-08-01T00:00:00Z"
+                      - id: "bios_model_456"
+                        name: "Pro 16 Gen2"
+                        version: "2.0.1"
+                        vendor: "ASUS"
+                        modelNumber: "X5678"
+                        releasedAt: "2024-10-15T00:00:00Z"
+                    page: 1
+                    limit: 20
+                    total: 2
+          default:
+            $ref: "#/components/responses/DefaultProblem"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: 第幾頁（從 1 開始）
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 20
+      description: 每頁筆數
+    Sort:
+      name: sort
+      in: query
+      required: false
+      schema:
+        type: string
+      description: 逗號分隔欄位；前綴 - 表示降冪。例：name,-updatedAt
+    Search:
+      name: q
+      in: query
+      required: false
+      schema:
+        type: string
+      description: 關鍵字搜尋（常用於 name）
+    FilterType:
+      name: filter[type]
+      in: query
+      required: false
+      schema:
+        $ref: "#/components/schemas/PolicyTypeEnum"
+      description: 依 Policy 類型過濾
+    FilterTag:
+      name: filter[tag]
+      in: query
+      required: false
+      schema:
+        type: string
+      description: 依單一 Tag 過濾
+    FilterStatus:
+      name: filter[status]
+      in: query
+      required: false
+      schema:
+        $ref: "#/components/schemas/PolicyStatus"
+      description: 依狀態過濾
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        minLength: 1
+      description: 用於確保 POST/PATCH 冪等性
+    PolicyId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    GroupId:
+      name: groupId
+      in: path
+      required: true
+      schema:
+        type: string
+    JobId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    PolicyType:
+      name: type
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/PolicyTypeEnum"
+  responses:
+    DefaultProblem:
+      description: 錯誤（RFC7807）
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+  schemas:
+    Problem:
+      type: object
+      properties:
+        type: { type: string, format: uri, nullable: true }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string, nullable: true }
+        instance: { type: string, nullable: true }
+        code: { type: string, nullable: true }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+        traceId: { type: string, nullable: true }
+      required: [title, status]
+    DashboardSummary:
+      type: object
+      properties:
+        policyCount:
+          type: integer
+          minimum: 0
+        policiesByType:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                $ref: "#/components/schemas/PolicyTypeEnum"
+              title:
+                type: string
+              count:
+                type: integer
+                minimum: 0
+            required: [type, count]
+        groupCount:
+          type: integer
+          minimum: 0
+      required: [policyCount, policiesByType, groupCount]
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        name: { type: string }
+      required: [id, email, name]
+    Group:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        deviceCount: { type: integer, minimum: 0, nullable: true }
+      required: [id, name]
+    GroupList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Group"
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+      required: [items, page, limit, total]
+    PolicyStatus:
+      type: string
+      enum: [draft, publishing, published, failed, archived]
+    PolicyTypeEnum:
+      type: string
+      enum: [bios_authentication, bios_update]
+    PolicyExternal:
+      type: object
+      properties:
+        provider:
+          type: string
+          enum: [microsoft_graph]
+        externalId:
+          type: string
+          nullable: true
+        lastPublishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastPublishStatus:
+          type: string
+          enum: [queued, running, succeeded, failed]
+          nullable: true
+        lastPublishError:
+          type: string
+          nullable: true
+    PolicyGroupRef:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string, nullable: true }
+      required: [id]
+    BasePolicy:
+      type: object
+      properties:
+        id: { type: string }
+        type:
+          $ref: "#/components/schemas/PolicyTypeEnum"
+        name: { type: string }
+        description: { type: string, nullable: true }
+        tags:
+          type: array
+          items: { type: string }
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/PolicyGroupRef"
+        status:
+          $ref: "#/components/schemas/PolicyStatus"
+        external:
+          $ref: "#/components/schemas/PolicyExternal"
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        publishedAt: { type: string, format: date-time, nullable: true }
+      required:
+        [id, type, name, tags, groups, status, createdAt, updatedAt]
+    BiosAuthenticationProperties:
+      type: object
+      additionalProperties: false
+      required: [password, certKeyFileId]
+      properties:
+        password:
+          type: string
+          minLength: 1
+        certKeyFileId:
+          type: string
+          description: 以 /v1/files/uploads 取得的 fileId
+    BiosUpdateProperties:
+      type: object
+      additionalProperties: false
+      required: [password, modelId]
+      properties:
+        password:
+          type: string
+          minLength: 1
+        modelId:
+          type: string
+          description: 以 /v1/firmware/bios/models 取得的 id
+    BiosAuthenticationPolicy:
+      allOf:
+        - $ref: "#/components/schemas/BasePolicy"
+        - type: object
+          properties:
+            type:
+              type: string
+              const: bios_authentication
+            properties:
+              $ref: "#/components/schemas/BiosAuthenticationProperties"
+          required: [type, properties]
+    BiosUpdatePolicy:
+      allOf:
+        - $ref: "#/components/schemas/BasePolicy"
+        - type: object
+          properties:
+            type:
+              type: string
+              const: bios_update
+            properties:
+              $ref: "#/components/schemas/BiosUpdateProperties"
+          required: [type, properties]
+    Policy:
+      oneOf:
+        - $ref: "#/components/schemas/BiosAuthenticationPolicy"
+        - $ref: "#/components/schemas/BiosUpdatePolicy"
+      discriminator:
+        propertyName: type
+        mapping:
+          bios_authentication: "#/components/schemas/BiosAuthenticationPolicy"
+          bios_update: "#/components/schemas/BiosUpdatePolicy"
+    PolicyListItem:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        status:
+          $ref: "#/components/schemas/PolicyStatus"
+        type:
+          $ref: "#/components/schemas/PolicyTypeEnum"
+        updatedAt: { type: string, format: date-time }
+      required: [id, name, tags, status, type, updatedAt]
+    PolicyList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PolicyListItem"
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+      required: [items, page, limit, total]
+    CreatePolicyRequest:
+      type: object
+      required: [type, name, groupIds, properties]
+      properties:
+        type:
+          $ref: "#/components/schemas/PolicyTypeEnum"
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items: { type: string }
+          default: []
+        groupIds:
+          type: array
+          items:
+            type: string
+            minItems: 1
+        properties:
+          oneOf:
+            - $ref: "#/components/schemas/BiosAuthenticationProperties"
+            - $ref: "#/components/schemas/BiosUpdateProperties"
+          discriminator:
+            propertyName: type
+            mapping:
+              bios_authentication: "#/components/schemas/BiosAuthenticationProperties"
+              bios_update: "#/components/schemas/BiosUpdateProperties"
+        publish:
+          type: boolean
+          description: 預設為 true；建立後觸發發布
+          default: true
+    UpdatePolicyRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string }
+        description: { type: string, nullable: true }
+        tags:
+          type: array
+          items: { type: string }
+        properties:
+          oneOf:
+            - $ref: "#/components/schemas/BiosAuthenticationProperties"
+            - $ref: "#/components/schemas/BiosUpdateProperties"
+        groupIds:
+          type: array
+          items:
+            type: string
+    ClonePolicyRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+    FileUploadInitRequest:
+      type: object
+      required: [filename, contentType, purpose]
+      properties:
+        filename: { type: string }
+        contentType: { type: string }
+        purpose:
+          type: string
+          enum: [policy_cert_key]
+    FileUploadInitResponse:
+      type: object
+      properties:
+        fileId: { type: string }
+        uploadUrl: { type: string, format: uri }
+        headers:
+          type: object
+          additionalProperties: { type: string }
+        expiresAt: { type: string, format: date-time }
+      required: [fileId, uploadUrl, expiresAt]
+    Job:
+      type: object
+      properties:
+        id: { type: string }
+        type:
+          type: string
+          enum: [policy.publish]
+        status:
+          type: string
+          enum: [queued, running, succeeded, failed]
+        startedAt: { type: string, format: date-time, nullable: true }
+        finishedAt: { type: string, format: date-time, nullable: true }
+        error: { type: string, nullable: true }
+      required: [id, type, status]
+    PublishResponse:
+      type: object
+      properties:
+        job:
+          $ref: "#/components/schemas/Job"
+        policy:
+          $ref: "#/components/schemas/Policy"
+      required: [job, policy]
+    PolicyType:
+      type: object
+      properties:
+        type:
+          $ref: "#/components/schemas/PolicyTypeEnum"
+        title:
+          type: string
+      required: [type, title]
+    PolicyTypeDetail:
+      type: object
+      properties:
+        type:
+          $ref: "#/components/schemas/PolicyTypeEnum"
+        title:
+          type: string
+        schema:
+          type: object
+          description: JSON Schema（draft 2020-12）
+          additionalProperties: true
+          example:
+            $schema: "https://json-schema.org/draft/2020-12/schema"
+            type: object
+            additionalProperties: false
+            required: ["password", "certKeyFileId"]
+            properties:
+              password: { type: string, minLength: 1 }
+              certKeyFileId: { type: string }
+      required: [type, title, schema]
+    BiosModel:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        version: { type: string }
+        vendor: { type: string }
+        modelNumber: { type: string }
+        releasedAt: { type: string, format: date-time, nullable: true }
+      required: [id, name]
+    BiosModelList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BiosModel"
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+      required: [items, page, limit, total]
