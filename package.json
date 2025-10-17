@@ -1,0 +1,11 @@
+{
+  "name": "mdm-api-mock",
+  "private": true,
+  "scripts": {
+    "mock": "prism mock openapi.yaml --port 4010 --cors --errors --host 0.0.0.0",
+    "mock:dynamic": "prism mock openapi.yaml --port 4010 --cors --errors --host 0.0.0.0 -d"
+  },
+  "devDependencies": {
+    "@stoplight/prism-cli": "^5.10.1"
+  }
+}
